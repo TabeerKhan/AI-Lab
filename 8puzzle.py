@@ -1,65 +1,112 @@
-from collections import deque
+import heapq
 
-# Goal State
-goal_state = [[1, 2, 3],
-              [4, 5, 6],
-              [7, 8, 0]]
+GOAL_STATE = (1, 2, 3,
+              4, 5, 6,
+              7, 8, 0)
 
-# Function to find position of blank (0)
-def find_blank(state):
-    for i in range(3):
-        for j in range(3):
-            if state[i][j] == 0:
-                return i, j
+MOVES = {
+    "Up": -3,
+    "Down": 3,
+    "Left": -1,
+    "Right": 1
+}
 
-# Function to generate new states
-def generate_states(state):
-    x, y = find_blank(state)
-    moves = [(0,1), (0,-1), (1,0), (-1,0)]
-    children = []
+def manhattan_distance(state):
+    """Calculate Manhattan Distance heuristic"""
+    distance = 0
+    for i in range(9):
+        if state[i] != 0:
+            goal_index = GOAL_STATE.index(state[i])
+            x1, y1 = divmod(i, 3)
+            x2, y2 = divmod(goal_index, 3)
+            distance += abs(x1 - x2) + abs(y1 - y2)
+    return distance
 
-    for dx, dy in moves:
-        nx, ny = x + dx, y + dy
-        if 0 <= nx < 3 and 0 <= ny < 3:
-            new_state = [row[:] for row in state]
-            new_state[x][y], new_state[nx][ny] = new_state[nx][ny], new_state[x][y]
-            children.append(new_state)
 
-    return children
+def get_neighbors(state):
+    """Generate valid neighbor states"""
+    neighbors = []
+    zero_index = state.index(0)
 
-# BFS Algorithm
-def bfs(start_state):
-    visited = set()
-    queue = deque([(start_state, [])])
+    row, col = divmod(zero_index, 3)
 
-    while queue:
-        current, path = queue.popleft()
+    for move, position_change in MOVES.items():
+        new_index = zero_index + position_change
 
-        if current == goal_state:
-            return path + [current]
+        if move == "Up" and row == 0:
+            continue
+        if move == "Down" and row == 2:
+            continue
+        if move == "Left" and col == 0:
+            continue
+        if move == "Right" and col == 2:
+            continue
 
-        visited.add(str(current))
+        new_state = list(state)
+        new_state[zero_index], new_state[new_index] = new_state[new_index], new_state[zero_index]
+        neighbors.append((tuple(new_state), move))
 
-        for child in generate_states(current):
-            if str(child) not in visited:
-                queue.append((child, path + [current]))
+    return neighbors
+
+
+def solve_puzzle(initial_state):
+    """Solve 8 puzzle using A* search"""
+
+    priority_queue = []
+    heapq.heappush(priority_queue, (0, initial_state))
+
+    came_from = {}
+    g_cost = {initial_state: 0}
+
+    while priority_queue:
+        _, current_state = heapq.heappop(priority_queue)
+
+        if current_state == GOAL_STATE:
+            return reconstruct_path(came_from, current_state)
+
+        for neighbor, move in get_neighbors(current_state):
+            tentative_g = g_cost[current_state] + 1
+
+            if neighbor not in g_cost or tentative_g < g_cost[neighbor]:
+                g_cost[neighbor] = tentative_g
+                f_cost = tentative_g + manhattan_distance(neighbor)
+                heapq.heappush(priority_queue, (f_cost, neighbor))
+                came_from[neighbor] = (current_state, move)
 
     return None
 
-# Initial State
-initial_state = [[1, 2, 3],
-                 [4, 0, 6],
-                 [7, 5, 8]]
 
-# Solve the puzzle
-solution = bfs(initial_state)
+def reconstruct_path(came_from, current):
+    """Reconstruct solution path"""
+    path = []
+    while current in came_from:
+        current, move = came_from[current]
+        path.append(move)
+    path.reverse()
+    return path
 
-# Print Solution
-if solution:
-    print("Solution Path:\n")
-    for step in solution:
-        for row in step:
-            print(row)
-        print()
-else:
-    print("No solution found.")
+
+def print_state(state):
+    """Print puzzle in 3x3 format"""
+    for i in range(0, 9, 3):
+        print(state[i:i+3])
+    print()
+
+
+if __name__ == "__main__":
+    
+    initial_state = (1, 2, 3,
+                     4, 0, 6,
+                     7, 5, 8)
+
+    print("Initial State:")
+    print_state(initial_state)
+
+    solution = solve_puzzle(initial_state)
+
+    if solution:
+        print("Solution found!")
+        print("Moves:", solution)
+        print("Number of moves:", len(solution))
+    else:
+        print("No solution exists.")
