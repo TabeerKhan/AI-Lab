@@ -1,0 +1,37 @@
+% Water Jug Problem using Prolog
+
+% possible states
+move((X,Y),(4,Y)) :- X < 4.              % Fill 4L jug
+move((X,Y),(X,3)) :- Y < 3.              % Fill 3L jug
+move((X,Y),(0,Y)) :- X > 0.              % Empty 4L jug
+move((X,Y),(X,0)) :- Y > 0.              % Empty 3L jug
+
+% Pour from 4L jug to 3L jug
+move((X,Y),(X1,Y1)) :-
+    X > 0, Y < 3,
+    Transfer is min(X, 3-Y),
+    X1 is X - Transfer,
+    Y1 is Y + Transfer.
+
+% Pour from 3L jug to 4L jug
+move((X,Y),(X1,Y1)) :-
+    Y > 0, X < 4,
+    Transfer is min(Y, 4-X),
+    X1 is X + Transfer,
+    Y1 is Y - Transfer.
+
+% Goal state
+goal((2,_)).
+
+% Search
+path(State,Visited,[State]) :-
+    goal(State).
+
+path(State,Visited,[State|Path]) :-
+    move(State,Next),
+    \+ member(Next,Visited),
+    path(Next,[Next|Visited],Path).
+
+% Start
+solve(Path) :-
+    path((0,0),[(0,0)],Path).
